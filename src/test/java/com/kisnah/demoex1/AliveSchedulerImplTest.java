@@ -9,15 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @SpringBootTest
 class AliveSchedulerImplTest {
 
-    private final AliveSchedulerImpl aliveScheduler;
+    private final AliveSchedulerImplV1 aliveScheduler;
 
     @Autowired
-    public AliveSchedulerImplTest(AliveSchedulerImpl aliveScheduler) {
+    public AliveSchedulerImplTest(AliveSchedulerImplV1 aliveScheduler) {
         this.aliveScheduler = aliveScheduler;
     }
 

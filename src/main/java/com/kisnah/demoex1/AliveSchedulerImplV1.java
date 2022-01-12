@@ -5,14 +5,13 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 @Service
-public class AliveSchedulerImpl implements AliveScheduler {
+public class AliveSchedulerImplV1 implements AliveScheduler {
 
     private static ScheduledExecutorService ses = Executors.newScheduledThreadPool(10);
 
@@ -20,14 +19,14 @@ public class AliveSchedulerImpl implements AliveScheduler {
     private static Map<Integer, ScheduledFuture<?>> scheduleTasks = new ConcurrentHashMap<>();
 
     // 스케줄러 데이터 관리.
-    private static Map<String, Boolean> cacheManager = new ConcurrentHashMap<>();
-//    private static List<HostInfo> cacheManager = new ArrayList<>();
+    private static List<HostInfo> cacheManager = new ArrayList<>();
 
+    // trigger 역할.
     private boolean shutdown = false;
 
     @Override
     public void run(int scheduleId, List<HostInfo> hosts, int initialDelayMs, int delayMs) throws InterruptedException {
-//        throw new InterruptedException("스케줄러 종료");
+
         if (shutdown) {
             return;
         }
@@ -35,9 +34,8 @@ public class AliveSchedulerImpl implements AliveScheduler {
             for (HostInfo host : hosts) {
                 boolean alive = isAlive(host.getHostName());
                 host.setAlive(alive);
-                System.out.println("HOST = " + host);
-                cacheManager.put(host.getHostName(), alive);
-//                cacheManager.add(host);
+//                System.out.println("HOST = " + host);
+                cacheManager.add(host);
             }
         }, initialDelayMs, delayMs, TimeUnit.MILLISECONDS);
         scheduleTasks.put(scheduleId, future);
@@ -45,12 +43,11 @@ public class AliveSchedulerImpl implements AliveScheduler {
 
     @Override
     public void stop(int scheduleId) throws ExecutionException, InterruptedException {
-        System.out.println(" ================================ 스케줄러 종료. ================================");
-        ses.shutdown();
+        ses.shutdownNow();
         shutdown = true;
-
         scheduleTasks.get(scheduleId).cancel(true);
 
+        System.out.println(" ====== Task Clear ======");
         scheduleTasks.clear();
 
         System.out.println(" ================================ 스케줄러 종료. ================================");
@@ -58,18 +55,11 @@ public class AliveSchedulerImpl implements AliveScheduler {
 
     @Override
     public HostInfo get(String hostName) {
-        cacheManager.get(hostName);
-//        return cacheManager.get(3);
+        return cacheManager.get(3);
     }
 
     @Override
     public List<HostInfo> getAll() throws ExecutionException, InterruptedException {
-        System.out.println(" =============== getAll =============== ");
-        Iterator<String> iterator = cacheManager.keySet().stream().iterator();
-        while (iterator.hasNext()) {
-            iterator.next();
-        }
-
         return cacheManager.stream()
                 .parallel()
                 .collect(Collectors.toList());
@@ -77,25 +67,15 @@ public class AliveSchedulerImpl implements AliveScheduler {
 
     @Override
     public void update(int scheduleId, List<HostInfo> hosts) throws ExecutionException, InterruptedException {
+        shutdown = false;
         run(scheduleId, hosts, 1000, 3000);
     }
-
-    private boolean isAlive(String hostName) {
-        try {
-            InetAddress inetAddress = InetAddress.getByName(hostName);
-            return inetAddress.isReachable(2000);
-        } catch (IOException e) {
-//            e.printStackTrace();
-            return false;
-        }
-    }
-
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         // 모니터링 조회 대상 리스트.
         List<HostInfo> list = getHosts();
 
-        AliveSchedulerImpl aliveScheduler = new AliveSchedulerImpl();
+        AliveSchedulerImplV1 aliveScheduler = new AliveSchedulerImplV1();
 
         aliveScheduler.run(1, list, 1000, 3000);
 
@@ -103,18 +83,17 @@ public class AliveSchedulerImpl implements AliveScheduler {
         Thread.sleep(8000);
         System.out.println(" ====== first sleep end ======");
 
-        List<HostInfo> getList = aliveScheduler.getAll();
-        System.out.println(getList);
-
-
         System.out.println(" ====== second sleep start ======");
         Thread.sleep(8000);
         System.out.println(" ====== second sleep end ======");
 
-        System.out.println(" ====== get ====== ");
-        HostInfo hostInfo = aliveScheduler.get("aa");
-        System.out.println(hostInfo);
+        System.out.println(" ====== getAll ====== ");
+        List<HostInfo> getAll = aliveScheduler.getAll();
+        System.out.println(getAll);
+        System.out.println(" ====== getAll ====== ");
 
+
+        System.out.println(" ================================ 스케줄러 종료. ================================");
         aliveScheduler.stop(1);
 
         System.out.println(" ====== 새로운 리스트 조회. ======");
@@ -122,9 +101,11 @@ public class AliveSchedulerImpl implements AliveScheduler {
 
         System.out.println(" 스케줄러 시작.");
 
-        aliveScheduler.run(1, updateList, 1000, 3000);
+        Thread.sleep(8000);
 
-//        aliveScheduler.update(1, updateList);
+//        aliveScheduler.run(1, updateList, 1000, 3000);
+
+        aliveScheduler.update(1, updateList);
 
     }
 
@@ -146,5 +127,14 @@ public class AliveSchedulerImpl implements AliveScheduler {
             list.add(new HostInfo(hostNameA + i));
         }
         return list;
+    }
+    private boolean isAlive(String hostName) {
+        try {
+            InetAddress inetAddress = InetAddress.getByName(hostName);
+            return inetAddress.isReachable(2000);
+        } catch (IOException e) {
+//            e.printStackTrace();
+            return false;
+        }
     }
 }
