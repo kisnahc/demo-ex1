@@ -19,13 +19,13 @@ class AliveSchedulerImplTest {
         this.aliveScheduler = aliveScheduler;
     }
 
-    List<HostInfo> list = new ArrayList<>();
+    List<ModelInfo> list = new ArrayList<>();
 
     @BeforeEach
     void init(){
-        list.add(new HostInfo("google.com"));
+        list.add(new ModelInfo("google.com"));
         for (int i = 1; i < 2001; i++) {
-            list.add(new HostInfo("google.com"+i));
+            list.add(new ModelInfo("google.com"+i));
         }
     }
 
@@ -39,6 +39,8 @@ class AliveSchedulerImplTest {
     @Test
     public void stop_test() throws ExecutionException, InterruptedException {
         aliveScheduler.stop(id);
+
+
     }
 
 }
